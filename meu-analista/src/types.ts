@@ -7,9 +7,9 @@ export interface StockData {
   price: string;
   variation: string;
   indicators: {
-    pl: string | number;
-    pvp: string | number;
-    dy: string;
+    pl: string | number | null;
+    pvp: string | number | null;
+    dy: string | null;
   };
 }
 

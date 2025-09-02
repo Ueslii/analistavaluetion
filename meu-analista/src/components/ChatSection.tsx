@@ -1,7 +1,7 @@
 // src/components/ChatSection.tsx
 
 import React, { useState } from 'react';
-import { Message, StockData } from './types';
+import { Message, StockData } from '../types'; // Corrigido para buscar da pasta pai
 import TypingIndicator from './TypingIndicator';
 
 interface ChatSectionProps {
@@ -11,11 +11,7 @@ interface ChatSectionProps {
 export default function ChatSection({ onStockSearch }: ChatSectionProps) {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      sender: 'bot',
-      text: 'Olá! Sou seu Analista de Valuation. Por favor, insira o ticker da ação (ex: PETR4, MGLU3).',
-    },
+    { id: 1, sender: 'bot', text: 'Olá! Sou seu Analista de Valuation. Por favor, insira o ticker da ação (ex: PETR4, MGLU3).' },
   ]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,7 +30,6 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
 
     try {
       const fetchedStockData = await onStockSearch(userInput);
-
       if (!fetchedStockData) {
         throw new Error("Não foi possível encontrar os dados da ação para a análise.");
       }
@@ -43,10 +38,7 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
       const response = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          message: userInput,
-          stockData: fetchedStockData
-        }),
+        body: JSON.stringify({ message: userInput, stockData: fetchedStockData }),
       });
 
       if (!response.ok) throw new Error(`O servidor respondeu com o status: ${response.status}`);

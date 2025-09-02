@@ -1,7 +1,7 @@
 // src/components/DataPanel.tsx
 
 import React from "react";
-import { StockData } from "./types";
+import { StockData } from "../types";
 
 interface DataPanelProps {
   stockData: StockData | null;
