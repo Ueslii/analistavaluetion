@@ -93,12 +93,12 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
               placeholder="Digite o ticker aqui..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              className="flex-1 p-3 rounded-lg bg-background border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary disabled:opacity-50"
+              className="w-full flex-1 p-3 rounded-lg bg-background border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary disabled:opacity-50"
               disabled={isLoading}
             />
             <button
               type="submit"
-              className="bg-primary hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="flex-shrink-0 bg-primary hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               {isLoading ? 'Analisando...' : 'Enviar'}
