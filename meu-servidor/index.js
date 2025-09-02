@@ -20,7 +20,7 @@ app.post('/chat', async (req, res) => {
   try {
     const { message, stockData } = req.body;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
 # PERSONA E OBJETIVO
@@ -71,6 +71,12 @@ Execute as seguintes etapas em ordem:
   } catch (error) {
     console.error("❌ Erro ao chamar a API do Gemini:", error);
     res.status(500).json({ message: "Erro ao se comunicar com a IA." });
+    if (res.status(429)) {
+      return res.status(429).json({
+        message: "Limite de uso do Gemini atingido. Tente novamente em alguns minutos."
+      })
+    }
+  
   }
 });
 
