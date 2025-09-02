@@ -1,7 +1,7 @@
 // src/App.tsx
 
 import React, { useState } from 'react';
-import { StockData } from './components/types';
+import { StockData } from './components/types'; // Importando nosso tipo centralizado
 
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -17,16 +17,17 @@ function App() {
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // MUDANÇA: Agora esta função retorna os dados encontrados (ou null)
+  // Esta função agora retorna os dados que encontra
   const handleStockSearch = async (ticker: string): Promise<StockData | null> => {
     setIsLoading(true);
+    // Usamos a URL da API definida nas variáveis de ambiente do Vercel/Netlify
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     try {
-      const apiUrl = import.meta.env.VITE_API_URL;
       const response = await fetch(`${apiUrl}/api/stock/${ticker}`);
       if (!response.ok) throw new Error('Ação não encontrada');
       const data: StockData = await response.json();
       setStockData(data);
-      return data; // Retorna os dados para quem chamou (o ChatSection)
+      return data; // Retorna os dados para o ChatSection
     } catch (error) {
       console.error("Erro ao buscar dados da ação:", error);
       setStockData(null);

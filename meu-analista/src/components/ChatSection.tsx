@@ -39,8 +39,7 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
         throw new Error("Não foi possível encontrar os dados da ação para a análise.");
       }
       
-      // ===== CORREÇÃO DA SINTAXE AQUI =====
-      const apiUrl = import.meta.env.VITE_API_URL;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -49,7 +48,6 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
           stockData: fetchedStockData
         }),
       });
-      // =====================================
 
       if (!response.ok) throw new Error(`O servidor respondeu com o status: ${response.status}`);
       
@@ -73,7 +71,6 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
     }
   };
 
-  // O resto do seu componente (a parte do return) continua exatamente igual.
   return (
     <section className="mb-20">
       <div className="w-full max-w-4xl mx-auto h-[70vh] flex flex-col border border-white/10 rounded-lg shadow-lg">

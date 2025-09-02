@@ -1,7 +1,7 @@
 // src/components/DataPanel.tsx
 
 import React from "react";
-import { StockData } from "./types"; // Importando nosso tipo centralizado
+import { StockData } from "./types";
 
 interface DataPanelProps {
   stockData: StockData | null;
