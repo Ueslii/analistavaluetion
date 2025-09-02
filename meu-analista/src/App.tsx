@@ -21,7 +21,8 @@ function App() {
   const handleStockSearch = async (ticker: string): Promise<StockData | null> => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/api/stock/${ticker}`);
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/api/stock/${ticker}`);
       if (!response.ok) throw new Error('Ação não encontrada');
       const data: StockData = await response.json();
       setStockData(data);

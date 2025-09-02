@@ -5,7 +5,7 @@ import { Message, StockData } from './types';
 import TypingIndicator from './TypingIndicator';
 
 interface ChatSectionProps {
-  onStockSearch: (ticker: string) => Promise<StockData | null>; // A função agora retorna uma Promessa
+  onStockSearch: (ticker: string) => Promise<StockData | null>;
 }
 
 export default function ChatSection({ onStockSearch }: ChatSectionProps) {
@@ -33,23 +33,23 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
     setInput('');
 
     try {
-      // 1. Buscamos os dados da ação e ESPERAMOS pela resposta
       const fetchedStockData = await onStockSearch(userInput);
 
-      // Se não encontrar dados da ação, mostra um erro e para.
       if (!fetchedStockData) {
         throw new Error("Não foi possível encontrar os dados da ação para a análise.");
       }
-
-      // 2. Enviamos a mensagem do usuário E os dados da ação para o backend
-      const response = await fetch('http://localhost:3001/chat', {
+      
+      // ===== CORREÇÃO DA SINTAXE AQUI =====
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const response = await fetch(`${apiUrl}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           message: userInput,
-          stockData: fetchedStockData // Enviando os dados junto!
+          stockData: fetchedStockData
         }),
       });
+      // =====================================
 
       if (!response.ok) throw new Error(`O servidor respondeu com o status: ${response.status}`);
       
