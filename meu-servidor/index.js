@@ -20,49 +20,45 @@ app.post('/chat', async (req, res) => {
   try {
     const { message, stockData } = req.body;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // Proteção caso o frontend envie dados incompletos
+    if (!stockData || !stockData.ticker) {
+      return res.status(400).json({ message: "Dados da ação (stockData) estão faltando no pedido." });
+    }
 
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+
+    // O prompt final, combinando o seu detalhamento com mais robustez
     const prompt = `
 # PERSONA E OBJETIVO
-Você é o "Analista de Valuation", uma IA especialista em "Value Investing", programada para seguir uma metodologia rigorosa baseada em um arquivo de conhecimento sobre Fluxo de Caixa Descontado (FCD). Sua comunicação é estruturada em etapas, usando Markdown para clareza. Seu objetivo final é calcular o preço justo para o ticker fornecido e apresentar o resultado de forma comparativa.
+Você é o "Analista de Valuation", uma IA especialista em "Value Investing". Sua missão é criar uma análise de Fluxo de Caixa Descontado (FCD) para o ticker fornecido, usando os dados reais fornecidos. Sua comunicação deve ser estruturada e em etapas, usando Markdown.
 
 # ARQUIVO DE CONHECIMENTO (SIMULADO)
-Você deve agir como se tivesse acesso a um arquivo de treinamento que contém as seguintes regras:
-- **Teoria Principal:** O valor de uma empresa é o valor presente de todos os seus fluxos de caixa futuros.
-- **Fórmula do WACC:** O WACC (Custo Médio Ponderado de Capital) deve ser calculado considerando o Custo do Capital Próprio (Ke) e o Custo da Dívida (Kd).
-- **Fórmula da Perpetuidade (Gordon Growth):** O Valor Terminal é calculado como FCF_final / (WACC - g).
-- **Cálculo do Preço Justo:** O Valor de Mercado Justo (Equity Value) é o Valor da Firma (Enterprise Value) - Dívida Líquida. O Preço Justo por Ação é o Equity Value / Número de Ações.
+Aja como se seu conhecimento viesse de um manual com estas regras:
+- **Teoria Principal:** O valor de uma empresa é o valor presente de seus fluxos de caixa futuros.
+- **Fórmulas Chave:** WACC, Crescimento de Gordon (Perpetuidade), e o cálculo final do Preço Justo (Enterprise Value - Dívida Líquida / Ações).
 
-# DADOS FORNECIDOS PELO USUÁRIO (VIA API)
-Os seguintes dados para a ação foram buscados em uma API externa e fornecidos a você. Use-os como base para sua análise:
+# DADOS REAIS FORNECIDOS (VIA API EXTERNA)
+Use estes dados como a fonte da verdade para sua análise:
 - Ticker: ${stockData.ticker}
 - Nome da Empresa: ${stockData.companyName}
 - Preço Atual: ${stockData.price}
-- P/L: ${stockData.indicators.pl}
-- P/VP: ${stockData.indicators.pvp}
-- Dividend Yield: ${stockData.indicators.dy}
+- P/L: ${stockData.indicators.pl || 'Não disponível na API'}
+- P/VP: ${stockData.indicators.pvp || 'Não disponível na API'}
+- Dividend Yield: ${stockData.indicators.dy || 'Não disponível na API'}
 
-# METODOLOGIA DE EXECUÇÃO (PASSO A PASSO OBRIGATÓRIO)
+# METODOLOGIA DE EXECUÇÃO (OBRIGATÓRIO)
+Execute as seguintes etapas em ordem, sem pular nenhuma:
 
-Execute as seguintes etapas em ordem:
+1.  **Validação e Premissas:** Confirme o recebimento do ticker. Crie uma tabela Markdown "Dados e Premissas" contendo os dados reais recebidos. Para os dados faltantes (como FCF, Dívida, WACC, etc.), você DEVE criar premissas PLAUSÍVEIS e realistas para a empresa em questão e incluí-las na tabela, indicando que são estimativas.
 
-1.  **Validação de Dados e Premissas (Simulada):** Comece confirmando o recebimento do ticker. Em seguida, crie e apresente uma tabela Markdown detalhada com "Dados e Premissas". Esta tabela deve incluir os dados recebidos (Preço Atual, P/L, etc.) e premissas ADICIONAIS que você irá "assumir" para o cálculo, como Fluxo de Caixa Livre (FCF) Anual, Dívida Líquida, uma taxa de WACC estimada, e um Crescimento na Perpetuidade (g) plausível para a empresa em questão.
+2.  **Cálculo do Preço Justo (Explicação):** Explique de forma concisa os passos que você (simuladamente) executou para o cálculo do FCD, referenciando seu "arquivo de conhecimento".
 
-2.  **Cálculo do Preço Justo (Explicação Concisa):** Após a tabela de premissas, explique de forma clara e em itens os passos que você (simuladamente) executou para o cálculo, referenciando seu "arquivo de conhecimento":
-    * Mencione o cálculo da Taxa de Desconto (WACC).
-    * Mencione a projeção dos fluxos de caixa e o cálculo do valor presente.
-    * Mencione o cálculo do Valor na Perpetuidade.
-    * Mencione a soma para o Valor da Firma e o ajuste pela dívida para chegar no Preço Justo por Ação.
+3.  **Resultado da Análise:** Apresente uma tabela Markdown final chamada "Resultado da Análise", com as colunas "Indicador" e "Valor", e as linhas: Preço Justo Calculado, Preço Atual de Mercado e Potencial de Alta/Baixa.
 
-3.  **Resultado da Análise:** Apresente uma tabela Markdown final chamada "Resultado da Análise". Ela deve ter duas colunas ("Indicador" e "Valor") e três linhas:
-    * Preço Justo Calculado (o valor que você calculou).
-    * Preço Atual de Mercado (o valor que foi fornecido).
-    * Potencial de Alta/Baixa (a diferença percentual).
-
-4.  **Conclusão e Disclaimer:** Escreva uma breve conclusão sobre o resultado (ex: "o resultado sugere que a ação está sendo negociada com uma potencial margem de segurança...") e finalize SEMPRE com o disclaimer: "Esta é uma análise educacional baseada em dados fornecidos e premissas estimadas. Não constitui recomendação de investimento."
+4.  **Conclusão e Disclaimer:** Escreva uma breve conclusão sobre o resultado (ex: "indicando uma potencial margem de segurança...") e finalize SEMPRE com o disclaimer: "Esta é uma análise educacional baseada em dados reais e premissas estimadas. Não constitui recomendação de investimento."
 `;
 
-    console.log("📨 Enviando prompt para Gemini...");
+    console.log("📨 Enviando prompt final para o Gemini...");
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
@@ -71,12 +67,6 @@ Execute as seguintes etapas em ordem:
   } catch (error) {
     console.error("❌ Erro ao chamar a API do Gemini:", error);
     res.status(500).json({ message: "Erro ao se comunicar com a IA." });
-    if (res.status(429)) {
-      return res.status(429).json({
-        message: "Limite de uso do Gemini atingido. Tente novamente em alguns minutos."
-      })
-    }
-  
   }
 });
 
@@ -84,25 +74,33 @@ Execute as seguintes etapas em ordem:
 app.get('/api/stock/:ticker', async (req, res) => {
   try {
     const { ticker } = req.params;
-    const url = `https://brapi.dev/api/quote/${ticker}?fundamentals=true`;
+    const t = ticker.toUpperCase();
+    const token = process.env.BRAPI_API_KEY;
 
-    console.log(`🔎 Buscando dados no Brapi para ${ticker}...`);
+    // Usando os parâmetros corretos para buscar mais dados
+    const url = `https://brapi.dev/api/quote/${t}?fundamental=true&dividends=true&token=${token}`;
+    
+    console.log(`🔎 Buscando dados no Brapi para ${t}...`);
     const response = await axios.get(url);
-    const data = response.data.results[0];
+    const data = response.data?.results?.[0];
 
     if (!data) {
-      throw new Error("Ticker não encontrado no Brapi");
+      throw new Error(`Ticker ${t} não encontrado no Brapi`);
     }
 
+    // Funções para formatar os dados de forma segura
+    const formatValue = (value) => value ?? null;
+    const formatPercentage = (value) => (value !== null && value !== undefined) ? `${(value * 100).toFixed(2)}%` : null;
+
     res.json({
-      ticker: data.symbol,
-      companyName: data.shortName,
-      price: `R$ ${parseFloat(data.regularMarketPrice).toFixed(2)}`,
-      variation: `${parseFloat(data.regularMarketChangePercent).toFixed(2)}%`,
+      ticker: data.symbol || t,
+      companyName: data.longName || data.shortName,
+      price: data.regularMarketPrice ? `R$ ${data.regularMarketPrice.toFixed(2)}` : 'N/A',
+      variation: data.regularMarketChangePercent ? `${data.regularMarketChangePercent.toFixed(2)}%` : 'N/A',
       indicators: {
-        pl: data.priceEarningsRatio,
-        pvp: data.priceToBook,
-        dy: `${parseFloat(data.dividendYield * 100).toFixed(2)}%`
+        pl: formatValue(data.trailingPE),
+        pvp: formatValue(data.priceToBook),
+        dy: formatPercentage(data.trailingAnnualDividendYield)
       }
     });
 
