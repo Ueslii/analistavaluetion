@@ -66,4 +66,3 @@ Este projeto foi construído do zero para demonstrar um conjunto completo de hab
         npm run dev
         ```
 
-O frontend estará disponível em `http://localhost:5173` e o backend em `http://localhost:3001`.
