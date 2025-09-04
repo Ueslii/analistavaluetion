@@ -19,7 +19,7 @@ app.post('/chat', async (req, res) => {
     if (!stockData || !stockData.ticker) {
       return res.status(400).json({ message: "Dados da ação (stockData) estão faltando no pedido." });
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
 # INSTRUÇÃO PRINCIPAL
