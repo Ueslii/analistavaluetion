@@ -37,7 +37,7 @@ export default function ChatSection({ onStockSearch, stockData }: ChatSectionPro
           throw new Error("Dados da ação não foram carregados a tempo para a análise.");
         }
         
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001'; 
         const response = await fetch(`${apiUrl}/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
