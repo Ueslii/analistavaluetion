@@ -1,7 +1,8 @@
 // src/App.tsx
 
 import React, { useState } from 'react';
-import { StockData } from './types';
+import { StockData } from './types'; // Corrigido para buscar da raiz do src
+
 import Header from './components/Header';
 import Hero from './components/Hero';
 import ChatSection from './components/ChatSection';
@@ -16,18 +17,19 @@ function App() {
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Esta função agora APENAS busca os dados e atualiza o estado.
-  const handleStockSearch = async (ticker: string) => {
+  const handleStockSearch = async (ticker: string): Promise<StockData | null> => {
     setIsLoading(true);
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
     try {
       const response = await fetch(`${apiUrl}/api/stock/${ticker}`);
       if (!response.ok) throw new Error('Ação não encontrada');
       const data: StockData = await response.json();
-      setStockData(data); // A única responsabilidade é atualizar o estado
+      setStockData(data);
+      return data;
     } catch (error) {
       console.error("Erro ao buscar dados da ação:", error);
       setStockData(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -44,8 +46,7 @@ function App() {
               {isLoading ? <DataPanelSkeleton /> : <DataPanel stockData={stockData} />}
             </div>
             <div className="lg:w-2/3">
-              {/* Passamos tanto a função QUANTO os dados para o ChatSection */}
-              <ChatSection onStockSearch={handleStockSearch} stockData={stockData} />
+              <ChatSection onStockSearch={handleStockSearch} />
             </div>
           </div>
           <KeyWidgets />
