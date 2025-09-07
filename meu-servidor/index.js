@@ -5,6 +5,7 @@ const cors = require('cors');
 require('dotenv').config();
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const yahooFinance = require('yahoo-finance2').default; // ✅ Yahoo Finance
 
 const app = express();
 const PORT = 3001;
@@ -13,6 +14,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 app.use(cors());
 app.use(express.json());
 
+// --- ROTA DO GEMINI ---
 app.post('/chat', async (req, res) => {
   try {
     const { message, stockData } = req.body;
@@ -34,12 +36,10 @@ Você é um "Analista de Valuation", uma IA especialista em Value Investing. Sua
 - Dividend Yield: ${stockData.indicators.dy || 'Não Informado'}
 
 # ETAPAS DE EXECUÇÃO OBRIGATÓRIAS
-Siga estas etapas em ordem:
-
-1.  **Análise dos Indicadores:** Com base nos DADOS REAIS FORNECIDOS, faça uma breve análise do que os indicadores P/L, P/VP e Dividend Yield sugerem sobre a situação atual da empresa. Se um dado não foi informado, mencione isso.
-2.  **Premissas para o FCD:** Crie uma tabela Markdown com premissas ADICIONAIS e PLAUSÍVEIS para o cálculo do Fluxo de Caixa Descontado (FCD). Inclua estimativas realistas para: Crescimento do FCF, uma Taxa de Desconto (WACC) e uma Taxa de Crescimento na Perpetuidade (g).
-3.  **Resultado da Análise (Tabela Resumo):** Apresente uma tabela Markdown final com o resumo comparativo: Preço Justo Calculado, Preço Atual de Mercado e Potencial de Valorização.
-4.  **Conclusão e Disclaimer:** Escreva uma breve conclusão sobre o que a análise sugere e finalize SEMPRE com o disclaimer: "Esta é uma análise educacional baseada em dados reais e premissas estimadas. Não constitui recomendação de investimento."
+1. *Análise dos Indicadores:* Com base nos DADOS REAIS FORNECIDOS, faça uma breve análise do que os indicadores P/L, P/VP e Dividend Yield sugerem sobre a situação atual da empresa. Se um dado não foi informado, mencione isso.
+2. *Premissas para o FCD:* Crie uma tabela Markdown com premissas ADICIONAIS e PLAUSÍVEIS para o cálculo do Fluxo de Caixa Descontado (FCD). Inclua estimativas realistas para: Crescimento do FCF, uma Taxa de Desconto (WACC) e uma Taxa de Crescimento na Perpetuidade (g).
+3. *Resultado da Análise (Tabela Resumo):* Apresente uma tabela Markdown final com o resumo comparativo: Preço Justo Calculado, Preço Atual de Mercado e Potencial de Valorização.
+4. *Conclusão e Disclaimer:* Escreva uma breve conclusão sobre o que a análise sugere e finalize SEMPRE com o disclaimer: "Esta é uma análise educacional baseada em dados reais e premissas estimadas. Não constitui recomendação de investimento."
 `;
 
     const result = await model.generateContent(prompt);
@@ -52,41 +52,40 @@ Siga estas etapas em ordem:
   }
 });
 
-// --- Rota de Dados Financeiros (Brapi - VERSÃO CORRIGIDA E SIMPLIFICADA) ---
+// --- ROTA DE DADOS FINANCEIROS (AGORA COM YAHOO FINANCE) ---
 app.get('/api/stock/:ticker', async (req, res) => {
   try {
     const { ticker } = req.params;
-    const t = ticker.toUpperCase();
-    const token = process.env.BRAPI_API_KEY;
-    // URL correta com os parâmetros recomendados pela documentação
-        console.log("Token caregado", token ? "OK":"NULO");
-    const url =   `https://brapi.dev/api/quote/${t}`;
+    const t = ticker.toUpperCase() + ".SA"; // ✅ .SA = B3 (Brasil)
 
+    // Buscar no Yahoo Finance
+    const data = await yahooFinance.quoteSummary(t, { modules: ["summaryDetail", "defaultKeyStatistics", "price"] });
 
-    const headers = {Authorization: `Bearer ${token}`};
-        console.log ("header enviado", {Authorization: `Bearer ${token}`});
-    
-        const response = await axios.get(url, {headers});
-    const data = response.data?.results?.[0];
-    if (!data) throw new Error(`Ticker ${t} não encontrado no Brapi`);
+    if (!data) throw new Error(`Ticker ${t} não encontrado no Yahoo Finance`);
+
+    const price = data.price?.regularMarketPrice || null;
+    const pl = data.defaultKeyStatistics?.forwardPE || data.summaryDetail?.trailingPE;
+    const pvp = data.defaultKeyStatistics?.priceToBook;
+    const dy = data.summaryDetail?.dividendYield ? (data.summaryDetail.dividendYield * 100).toFixed(2) + "%" : "N/A";
+
     res.json({
-      ticker: data.symbol || t,
-      companyName: data.longName || data.shortName,
-      price: data.regularMarketChangePercent? `R$ ${data.regularMarketPrice.toFixed(2)}` : 'N/A',
-        indicators: {
-          pl: data.trailingPE ?? "N/A", 
-          pvp: data.priceToBook ?? "N/A",
-          dy: data.trailingAnnualDividendYield
-        ? `${(data.trailingAnnualDividendYield * 100).toFixed(2)}%`
-        : "N/A"
-      }})}
-      catch (error) {
-        console.error("❌ Erro ao chamar a API do Brapi:", error);
-        res.status(500).json({ message: "Erro ao se comunicar com a API do Brapi." });
-      };
-  
-    }); 
-    
+      ticker: ticker.toUpperCase(),
+      companyName: data.price?.longName || data.price?.shortName || ticker,
+      price: price ? `R$ ${price.toFixed(2)}` : "N/A",
+      indicators: {
+        pl: pl ?? "N/A",
+        pvp: pvp ?? "N/A",
+        dy
+      }
+    });
+
+  } catch (error) {
+    console.error("❌ Erro ao buscar dados no Yahoo Finance:", error);
+    res.status(500).json({ message: "Erro ao buscar dados da ação." });
+  }
+});
+
+// --- START SERVER ---
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
