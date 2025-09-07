@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Message, StockData } from '../types'; // Corrigido para buscar da pasta pai
 import TypingIndicator from './TypingIndicator';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface ChatSectionProps {
   onStockSearch: (ticker: string) => Promise<StockData | null>;
@@ -73,7 +75,16 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`${message.sender === 'user' ? 'bg-primary/80 text-white' : 'bg-secondary/20 text-text-primary'} p-3 rounded-lg max-w-md`}>
-                {message.text === 'Analisando...' ? <TypingIndicator /> : <p className="whitespace-pre-wrap">{message.text}</p>}
+                {message.text === 'Analisando...' ? <TypingIndicator /> : <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({node, ...props}) => <table className="w-full border-collapse" {...props} />,
+                      th: ({node, ...props}) => <th className="border border-white/20 p-2 font-bold" {...props} />,
+                      td: ({node, ...props}) => <td className="border border-white/20 p-2" {...props} />,
+                    }}
+                  >
+                    {message.text}
+                  </ReactMarkdown>}
               </div>
             </div>
           ))}
