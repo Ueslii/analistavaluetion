@@ -58,47 +58,35 @@ app.get('/api/stock/:ticker', async (req, res) => {
     const { ticker } = req.params;
     const t = ticker.toUpperCase();
     const token = process.env.BRAPI_API_KEY;
-
     // URL correta com os parâmetros recomendados pela documentação
-    const url =   `https://brapi.dev/api/quote/${t}?fundamental=true&dividendos=true`;
-    const response = await axios.get(url, {
-      headers: {
-        authorization: `Bearer &{token}`
-      }
-    });
-    // Verificação se a API retornou um erro na sua resposta
-    if (response.data.error) {
-      throw new Error(response.data.error);
-    }
+        console.log("Token caregado", token ? "OK":"NULO");
+    const url =   `https://brapi.dev/api/quote/${t}`;
+
+
+    const headers = {Authorization: `Bearer ${token}`};
+        console.log ("header enviado", {Authorization: `Bearer ${token}`});
     
+        const response = await axios.get(url, {headers});
     const data = response.data?.results?.[0];
-
-    if (!data) {
-      throw new Error(`Ticker ${t} não encontrado no Brapi`);
-    }
-
-    // Funções para formatar os dados de forma segura, retornando 'N/A' se não existirem
-    const formatValue = (value) => (value !== undefined && value !== null) ? value : 'N/A';
-    const formatPercentage = (value) => (value !== null && value !== undefined) ? `${(value * 100).toFixed(2)}%` : 'N/A';
-
+    if (!data) throw new Error(`Ticker ${t} não encontrado no Brapi`);
     res.json({
       ticker: data.symbol || t,
       companyName: data.longName || data.shortName,
-      price: data.regularMarketPrice ? `R$ ${data.regularMarketPrice.toFixed(2)}` : 'N/A',
-      variation: data.regularMarketChangePercent ? `${data.regularMarketChangePercent.toFixed(2)}%` : 'N/A',
-      indicators: {
-        pl: formatValue(data.trailingPE),
-        pvp: formatValue(data.priceToBook),
-        dy: formatPercentage(data.trailingAnnualDividendYield)
-      }
-    });
-  } catch (error) {
-    console.error("❌ Erro ao buscar dados no Brapi:", error.message);
-    res.status(404).json({ message: "Ação não encontrada ou erro na API externa." });
-  }
-});
-
-
+      price: data.regularMarketChangePercent? `R$ ${data.regularMarketPrice.toFixed(2)}` : 'N/A',
+        indicators: {
+          pl: data.trailingPE ?? "N/A", 
+          pvp: data.priceToBook ?? "N/A",
+          dy: data.trailingAnnualDividendYield
+        ? `${(data.trailingAnnualDividendYield * 100).toFixed(2)}%`
+        : "N/A"
+      }})}
+      catch (error) {
+        console.error("❌ Erro ao chamar a API do Brapi:", error);
+        res.status(500).json({ message: "Erro ao se comunicar com a API do Brapi." });
+      };
+  
+    }); 
+    
 app.listen(PORT, () => {
   console.log(`🚀 Servidor rodando na porta ${PORT}`);
 });
