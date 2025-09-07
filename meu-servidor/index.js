@@ -60,11 +60,12 @@ app.get('/api/stock/:ticker', async (req, res) => {
     const token = process.env.BRAPI_API_KEY;
 
     // URL correta com os parâmetros recomendados pela documentação
-    const url = `https://brapi.dev/api/quote/${t}?fundamental=true&dividends=true&token=${token}`;
-    
-    console.log(`🔎 Buscando dados no Brapi para ${t}...`);
-    const response = await axios.get(url);
-
+    const url =   `https://brapi.dev/api/quote/${t}?fundamental=true&dividendos=true`;
+    const response = await axios.get(url, {
+      headers: {
+        authorization: `Bearer &{token}`
+      }
+    });
     // Verificação se a API retornou um erro na sua resposta
     if (response.data.error) {
       throw new Error(response.data.error);
