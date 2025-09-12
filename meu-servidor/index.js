@@ -13,6 +13,16 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 app.use(cors());
 app.use(express.json());
+const formatLargeNumber = (num) => {
+  if (num === null || num === undefined) return "N/A";
+  if (Math.abs(num) >= 1e9) {
+    return `R$ ${(num / 1e9).toFixed(2)} Bi`;
+  }
+  if (Math.abs(num) >= 1e6) {
+    return `R$ ${(num / 1e6).toFixed(2)} Mi`;
+  }
+  return `R$ ${num.toFixed(2)}`;
+};
 
 // --- ROTA DO GEMINI ---
 app.post('/chat', async (req, res) => {
@@ -21,41 +31,49 @@ app.post('/chat', async (req, res) => {
     if (!stockData || !stockData.ticker) {
       return res.status(400).json({ message: "Dados da ação (stockData) estão faltando no pedido." });
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig:{ temperature: 0.2}});
+
 
     const formatCurrency = (val) => val ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(val) : 'N/A';
     const formatSimple = (val) => val ? val.toFixed(2).replace('.', ',') : 'N/A';
     const formatPercent = (val) => val ? `${(val * 100).toFixed(2)}%`.replace('.', ',') : 'N/A';
 
+    
     const prompt = `
-# INSTRUÇÃO MESTRA
-Você é um "Analista de Valuation Sênior", especialista em modelagem financeira para empresas de commodities e energia. Sua tarefa é realizar uma análise de Fluxo de Caixa Descontado (FCD) para o ticker informado, sendo criterioso e realista nas suas premissas.
+    # INSTRUÇÃO MESTRA
+    Você é um "Analista de Valuation Sênior", especialista em modelagem financeira. Sua tarefa é realizar uma análise de Fluxo de Caixa Descontado (FCD) para o ticker informado, seguindo a metodologia mais precisa.
 
-# DADOS REAIS DA AÇÃO (Ponto de Partida)
-- Ticker: ${stockData.ticker}
-- Nome: ${stockData.companyName}
-- Preço Atual: ${formatCurrency(stockData.price)}
-- Market Cap: ${formatCurrency(stockData.marketCap)}
-- Ações em Circulação: ${formatCurrency(stockData.sharesOutstanding)}
-- Fluxo de Caixa Livre (Últimos 12M): ${formatCurrency(stockData.ttmFreeCashFlow)}
-- Dívida Total: ${formatCurrency(stockData.totalDebt)}
-- WACC (Taxa de Desconto) Base: ${formatPercent(stockData.estimatedWACC)}
+    # DADOS REAIS DA AÇÃO (Ponto de Partida)
+    - Ticker: ${stockData.ticker}
+    - Nome: ${stockData.companyName}
+    - Preço Atual: ${stockData.price}
+    - Ações em Circulação: ${stockData.sharesOutstanding}
+    - Fluxo de Caixa Livre (Últimos 12M): ${stockData.indicators.fcf || 'Não Informado'}
+    - Dívida Total: ${stockData.totalDebt || 'Não Informado'}
+    - Caixa e Equivalentes: ${stockData.totalCash || 'Não Informado'}
+    - P/L: ${stockData.indicators.pl || 'Não Informado'}
+    - P/VP: ${stockData.indicators.pvp || 'Não Informado'}
+    - Dividend Yield: ${stockData.indicators.dy || 'Não Informado'}
 
-# CONTEXTO DE MERCADO
-Considere o cenário atual: preços do petróleo, política de dividendos da empresa, plano de investimentos e o cenário macroeconômico brasileiro. Analistas de mercado estão otimistas com a geração de caixa no curto prazo.
+    # ETAPAS DE EXECUÇÃO OBRIGATÓRIAS
 
-# ETAPAS DE EXECUÇÃO OBRIGATÓRIAS
-1.  **Análise Preliminar:** Com base nos dados e no contexto de mercado, faça uma análise curta sobre a situação da empresa.
-2.  **Modelo de FCD - Projeções (Múltiplos Estágios):** Crie uma tabela de projeção do FCF para os próximos 5 anos. Em vez de uma taxa única, use um **modelo de 2 estágios**:
-    * **Anos 1-3 (Crescimento Acelerado):** Use uma taxa de crescimento maior, justificando-a com base no contexto de mercado (ex: preços de commodities, projetos).
-    * **Anos 4-5 (Crescimento Normalizado):** Use uma taxa de crescimento menor, representando uma normalização do mercado.
-    Justifique suas escolhas para as taxas de crescimento.
-3.  **Modelo de FCD - Premissas Finais:** Liste a Taxa de Desconto (WACC) e a Taxa de Crescimento na Perpetuidade (g) que você usará. Seja crítico sobre o WACC base; ajuste-o se achar necessário com base no risco percebido.
-4.  **Cálculo e Resultado Final:** Execute o cálculo do FCD passo a passo, mostrando os valores presentes dos FCFs e da perpetuidade, para chegar ao Preço Justo por Ação.
-5.  **Tabela Resumo:** Apresente a tabela final (Preço Justo, Preço Atual, Potencial de Valorização).
-6.  **Análise de Sensibilidade:** Comente brevemente como o Preço Justo mudaria se a taxa de crescimento ou o WACC fossem um pouco diferentes (ex: +/- 1%). Isso mostra a sensibilidade do modelo.
-7.  **Conclusão e Disclaimer:** Apresente sua conclusão final e o disclaimer padrão de não recomendação de investimento.
-`;
+    1.  **Análise Preliminar e Contexto de Mercado:** Descreva o sentimento de mercado para o setor e, em seguida, analise a situação financeira da empresa com base nos dados fornecidos.
+
+    2.  **Modelo de FCD - Projeções:** Crie uma tabela de projeção do FCF para os próximos 5 anos. Use o "Fluxo de Caixa Livre (Últimos 12M)" como ponto de partida. Justifique suas taxas de crescimento.
+
+    3.  **Modelo de FCD - Premissas Finais:** Apresente e justifique o WACC e a Taxa de Crescimento na Perpetuidade (g).
+
+    4.  **Cálculo do Enterprise Value (EV):** Calcule o Valor Presente dos FCFs projetados e o Valor Presente do Valor Terminal. A soma de ambos resulta no **Enterprise Value**. Mostre os cálculos.
+
+    5.  **Cálculo do Equity Value (Valor de Mercado):**
+        * **Calcule a Dívida Líquida:** Dívida Líquida = Dívida Total - Caixa e Equivalentes.
+        * **Calcule o Equity Value:** Equity Value = Enterprise Value - Dívida Líquida.
+        * **Calcule o Preço Justo por Ação:** Preço Justo = Equity Value / Ações em Circulação.
+
+    6.  **Tabela Resumo:** Apresente a tabela final (Preço Justo, Preço Atual, Potencial de Valorização).
+
+    7.  **Conclusão e Disclaimer:** Apresente sua conclusão e o disclaimer padrão.
+      `;
 
     const result = await model.generateContent(prompt);
     const text = result.response.text();
@@ -67,7 +85,6 @@ Considere o cenário atual: preços do petróleo, política de dividendos da emp
   }
 });
 
-// --- ROTA DE DADOS FINANCEIROS (AGORA COM YAHOO FINANCE) ---
 app.get('/api/stock/:ticker', async (req, res) => {
   try {
     const { ticker } = req.params;
@@ -90,9 +107,7 @@ app.get('/api/stock/:ticker', async (req, res) => {
     startDate.setMonth(endDate.getMonth() - 1);
     const history = await yahooFinance.historical(t, { period1: startDate, period2: endDate, interval: "1d" });
 
-    // --- MONTAGEM SEGURA DO OBJETO DE RESPOSTA ---
-    // Usamos o operador "?." (Optional Chaining) para evitar erros se um campo não existir.
-    // Se o campo não existir, ele retornará 'null'.
+
     const data = {
       ticker: ticker.toUpperCase(),
       companyName: quoteSummary.price?.longName || quoteSummary.price?.shortName || ticker,
@@ -102,7 +117,10 @@ app.get('/api/stock/:ticker', async (req, res) => {
       sharesOutstanding: quoteSummary.defaultKeyStatistics?.sharesOutstanding ?? null,
       ttmFreeCashFlow: quoteSummary.financialData?.freeCashflow ?? null,
       totalDebt: quoteSummary.financialData?.totalDebt ?? null,
+      totalCash: quoteSummary.financialData?.totalCash ?? null,
+      fcf: quoteSummary.financialData?.freeCashflow ?? null,
       estimatedWACC: 0.12, // Premissa inicial
+      
       history: history.map(h => ({
         date: new Date(h.date).toLocaleDateString('pt-BR'),
         close: h.close
@@ -114,7 +132,6 @@ app.get('/api/stock/:ticker', async (req, res) => {
       }
     };
 
-    // Log final para vermos exatamente o que estamos enviando para o frontend
     console.log('Backend está enviando para o frontend:', JSON.stringify(data, null, 2));
 
     res.json(data);
