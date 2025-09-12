@@ -5,6 +5,7 @@ import { Message, StockData } from '../types'; // Corrigido para buscar da pasta
 import TypingIndicator from './TypingIndicator';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ClipboardDocumentIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 interface ChatSectionProps {
   onStockSearch: (ticker: string) => Promise<StockData | null>;
@@ -16,6 +17,20 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
     { id: 1, sender: 'bot', text: 'Olá! Sou seu Analista de Valuation. Por favor, insira o ticker da ação (ex: PETR4, MGLU3).' },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<number | null>(null);
+
+   const handleCopyToClipboard = async (text: string, id: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedMessageId(id);
+      // Reseta o estado do ícone após 2 segundos
+      setTimeout(() => {
+        setCopiedMessageId(null);
+      }, 2000);
+    } catch (err) {
+      console.error('Falha ao copiar texto: ', err);
+    }
+  };
 
   const handleSendMessage = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,8 +89,22 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
         <main className="flex-1 p-6 space-y-4 overflow-y-auto">
           {messages.map((message) => (
             <div key={message.id} className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`${message.sender === 'user' ? 'bg-primary/80 text-white' : 'bg-secondary/20 text-text-primary'} p-3 rounded-lg max-w-md`}>
+              
+              <div className={`group relative ${message.sender === 'user' ? 'bg-primary/80 text-white' : 'bg-secondary/20 text-text-primary'} p-3 rounded-lg max-w-md`}>
+                
+                <button
+                    onClick={() => handleCopyToClipboard(message.text, message.id)}
+                    className="absolute top-2 right-2 p-1.5 rounded-md bg-background/50 text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-background/80 hover:text-text-primary"
+                    aria-label="Copiar resposta"
+                  >
+                    {copiedMessageId === message.id ? (
+                      <CheckIcon className="h-5 w-5 text-primary" />
+                    ) : (
+                      <ClipboardDocumentIcon className="h-5 w-5" />
+                    )}
+                  </button>
                 {message.text === 'Analisando...' ? <TypingIndicator /> : <ReactMarkdown
+                
                     remarkPlugins={[remarkGfm]}
                     components={{
                       table: ({node, ...props}) => <table className="w-full border-collapse" {...props} />,
@@ -99,6 +128,8 @@ export default function ChatSection({ onStockSearch }: ChatSectionProps) {
               className="w-full flex-1 p-3 rounded-lg bg-background border border-white/10 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary disabled:opacity-50"
               disabled={isLoading}
             />
+            
+
             <button
               type="submit"
               className="flex-shrink-0 bg-primary hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
