@@ -6,10 +6,16 @@ export interface StockData {
   companyName: string;
   price: string;
   variation: string;
+  sharesOutstanding: string | null;
+  totalDebt: string | null;
+  totalCash: string | null
+  netIncome?: string | null;
+  sector?: string | null; 
   indicators: {
     pl: string | number | null;
     pvp: string | number | null;
     dy: string | null;
+    fcf: string | null;
   };
 }
 
