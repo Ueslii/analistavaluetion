@@ -13,6 +13,7 @@ export default {
     },
       colors: {         
         'background': '#0D1117',
+        'background-pdf': '#11171F',
         'primary': '#10B981',
         'secondary': '#3B82F6',
         'text-primary': '#F1F5F9',
