@@ -22,8 +22,8 @@ const steps =[
 export default function HowToUse() {
   return (
     <section className="mb-20">
-      <h2 className='text-3xl font-bold text-center mt-12 mb-12'>Como Funciona</h2>
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-8'> {steps.map((step) => {
+      <h2 className='text-3xl font-bold text-center mt-12 mb-12 '>Como Funciona</h2>
+      <div className='grid grid-cols-1 md:grid-cols-3 gap-8 hover:transforme hover:translate-y-1'> {steps.map((step) => {
         const IconComponent = step.icon;
         return (
         <div key={step.title} className='bg-white/5 p-6 rounded-lg border border-white/10 text-center'>

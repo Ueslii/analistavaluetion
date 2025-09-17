@@ -1,5 +1,8 @@
 import React from 'react';
 import { ScaleIcon, ShieldCheckIcon, BeakerIcon } from '@heroicons/react/24/outline';
+import Header from './Header';
+
+
 
 const widgets = [
   {
@@ -22,7 +25,7 @@ const widgets = [
 export default function KeyWidgets() {
   return (
     <section className='mb-20'>
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-8'>
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-8 hover:transforme hover:translate-y-1'>
         {widgets.map((widget) => {
           const IconComponent = widget.icon;
           return (

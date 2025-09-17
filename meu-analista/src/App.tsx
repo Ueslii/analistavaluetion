@@ -12,6 +12,7 @@ import KeyWidgets from './components/KeyWidgets';
 import HowToUse from './components/HowToUse';
 import Disclaimer from './components/Disclaimer';
 import DataPanelSkeleton from './components/DataPanelSkeleton';
+import PdfAnalysis from './components/PdfAnalysis';
 
 function App() {
   const [stockData, setStockData] = useState<StockData | null>(null);
@@ -41,6 +42,8 @@ function App() {
       <main className="w-full flex-1">
         <div className="container mx-auto px-4 py-12 md:py-20">
           <Hero />
+          <section id='comecar-analise'>
+          </section>
           <div className="flex flex-col lg:flex-row gap-8 mb-20">
             <div className="lg:w-1/3">
               {isLoading ? <DataPanelSkeleton /> : <DataPanel stockData={stockData} />}
@@ -50,8 +53,17 @@ function App() {
             </div>
           </div>
           <KeyWidgets />
-          <HowToUse />
-          <Disclaimer />
+          <section id='como-funciona'>
+            <HowToUse />
+          </section>
+          <section id='sobre'>
+
+          <section id='guia-pdf'>
+            <PdfAnalysis />
+          </section>
+            <Disclaimer />
+          </section>
+
         </div>
       </main>
       <Footer />
