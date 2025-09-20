@@ -42,15 +42,16 @@ function App() {
       <main className="w-full flex-1">
         <div className="container mx-auto px-4 py-12 md:py-20">
           <Hero />
-          <section id='comecar-analise'>
-          </section>
+
+          
           <div className="flex flex-col lg:flex-row gap-8 mb-20">
             <div className="lg:w-1/3">
               {isLoading ? <DataPanelSkeleton /> : <DataPanel stockData={stockData} />}
             </div>
             <div className="lg:w-2/3">
-              <ChatSection onStockSearch={handleStockSearch} />
+              <section><ChatSection onStockSearch={handleStockSearch} /> </section>
             </div>
+          
           </div>
           <KeyWidgets />
           <section id='como-funciona'>
