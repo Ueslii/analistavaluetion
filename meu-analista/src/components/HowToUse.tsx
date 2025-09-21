@@ -1,6 +1,13 @@
 import React from 'react';
 import { MagnifyingGlassIcon, CheckBadgeIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
-// conteudo dos cards
+import AnimatedSection from './AnimatedSection';
+
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination, A11y } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
+
+
 const steps =[
   {
     icon: MagnifyingGlassIcon,
@@ -22,20 +29,39 @@ const steps =[
 export default function HowToUse() {
   return (
     <section className="mb-20">
+      <AnimatedSection>
       <h2 className='text-3xl font-bold text-center mt-12 mb-12 '>Como Funciona</h2>
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-8 hover:transforme hover:translate-y-1'> {steps.map((step) => {
-        const IconComponent = step.icon;
-        return (
-        <div key={step.title} className='bg-white/5 p-6 rounded-lg border border-white/10 text-center'>
-          <div className='flex justify-center mb-4'>
-            <IconComponent className='h-12 w-12 text-primary'/>
-          </div>
-          <h3 className='text-xl font-bold mt-4 mb-2'>{step.title}</h3>
-          <p className='text-text-secondary'>{step.description}</p>
-        </div>
-      );
-      })}
-      </div>
+      <Swiper
+          modules={[Pagination, A11y]}
+          spaceBetween={30}
+          slidesPerView={1} 
+          pagination={{ clickable: true }}
+          breakpoints={{
+       
+            768: {
+              slidesPerView: 3,
+              spaceBetween: 40
+            },
+          }}
+          className="py-12" 
+        >
+          {steps.map((step) => {
+            const IconComponent = step.icon;
+            return (
+              <SwiperSlide key={step.title} className="py-4">
+
+              <div className='bg-white/5 p-6 rounded-lg border border-white/10 text-center h-full flex flex-col items-center transform transition-transform hover:-translate-y-2'>
+                <div className='flex justify-center mb-4'>
+                    <IconComponent className='h-12 w-12 text-primary'/>
+                  </div>
+                  <h3 className='text-xl font-bold mt-4 mb-2'>{step.title}</h3>
+                  <p className='text-text-secondary'>{step.description}</p>
+                </div>
+              </SwiperSlide>
+            );
+          })}
+        </Swiper>
+    </AnimatedSection>
     </section>
   );
 }

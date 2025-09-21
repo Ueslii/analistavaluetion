@@ -43,25 +43,30 @@ function App() {
         <div className="container mx-auto px-4 py-12 md:py-20">
           <Hero />
 
-          
-          <div className="flex flex-col lg:flex-row gap-8 mb-20">
+          <div className="w-full flex flex-col lg:flex-row gap-8 mb-20 min-w-0">
             <div className="lg:w-1/3">
-              {isLoading ? <DataPanelSkeleton /> : <DataPanel stockData={stockData} />}
+              {isLoading ? <DataPanelSkeleton /> : (
+              <DataPanel stockData={stockData} 
+              onStockSearch={handleStockSearch} /> )}
             </div>
-            <div className="lg:w-2/3">
-              <section><ChatSection onStockSearch={handleStockSearch} /> </section>
+            <div className="lg:w-2/3 min-w-0">
+              <section id='comecar-analise'><ChatSection onStockSearch={handleStockSearch} /> </section>
             </div>
           
           </div>
+          <section id='sobre'>
           <KeyWidgets />
+          </section>
+
           <section id='como-funciona'>
             <HowToUse />
           </section>
-          <section id='sobre'>
-
+          
           <section id='guia-pdf'>
             <PdfAnalysis />
           </section>
+
+          <section id='aviso'>
             <Disclaimer />
           </section>
 
