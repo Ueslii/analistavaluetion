@@ -11,7 +11,7 @@ import 'swiper/css/pagination';
 const steps =[
   {
     icon: MagnifyingGlassIcon,
-    title: 'Insira o Ticlker',
+    title: 'Insira o Ticker',
     description: 'Digite o codigo da ação que deseja analisar na caixa do chat (ex: ITUB4, MGLU3).',
   },
   {

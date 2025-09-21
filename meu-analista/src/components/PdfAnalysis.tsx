@@ -16,7 +16,7 @@ const steps =[
   { 
     icon: DocumentChartBarIcon,
     title: 'Localize os Relatórios',
-    description: 'Dentro da página da empresa, navegue até a área de "Documentos", "Relatórios Financeiros" ou "Arquivos CVM". Esta seção contém todos os comunicados e relatórios oficiais enviados pela empresa.',
+    description: 'Na página da empresa, localize o menu de seleção (geralmente ao lado do nome) e altere a opção de "Sobre a Empresa" para "Relatórios Estruturados".',
   },
   {
     icon: DocumentArrowDownIcon,
@@ -47,13 +47,13 @@ export default function PdfAnalysis() {
             const IconComponent = step.icon;
             return (
              
-           <SwiperSlide key={step.title} className="py-4">
-              <div className='bg-white/5 p-6 rounded-lg border border-white/10 text-center h-full flex flex-col items-center transform transition-transform hover:-translate-y-2'>
+           <SwiperSlide key={step.title} className="py-4 self-stretch">
+              <div className='bg-white/5 p-6 rounded-lg border border-white/10 bg-background-pdf text-center h-full flex flex-col items-center transform transition-transform hover:-translate-y-2'>
                 <div className='flex justify-center mb-4'>
                   <IconComponent className='h-12 w-12 text-primary'/>
                 </div>
                 <h3 className='text-xl font-bold mt-4 mb-2'>{step.title}</h3>
-                <p className='text-text-secondary'>{step.description}</p>
+                <p className='flex-grow flex flex-col justify-center text-text-secondary'>{step.description}</p>
               </div>
             </SwiperSlide>
             );
