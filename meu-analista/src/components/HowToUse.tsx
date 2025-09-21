@@ -12,7 +12,7 @@ const steps =[
   {
     icon: MagnifyingGlassIcon,
     title: 'Insira o Ticlker',
-    description: 'Digite o codigo da ação que deseja analisar na caixa do chat (ex: PETR4, MGLU3).',
+    description: 'Digite o codigo da ação que deseja analisar na caixa do chat (ex: ITUB4, MGLU3).',
   },
   {
     icon: CheckBadgeIcon,
