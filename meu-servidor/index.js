@@ -6,13 +6,21 @@ require('dotenv').config();
 const axios = require('axios');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const yahooFinance = require('yahoo-finance2').default; // ✅ Yahoo Finance
+const multer = require('multer');
+const pdf = require('pdf-parse')
 
 const app = express();
 const PORT = 3001;
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });          
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 const formatLargeNumber = (num) => {
   if (num === null || num === undefined) return "N/A";
   if (Math.abs(num) >= 1e9) {
@@ -24,14 +32,33 @@ const formatLargeNumber = (num) => {
   return `R$ ${num.toFixed(2)}`;
 };
 
+app.post('/api/upload-pdf', upload.single('pdf'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Nenhum arquivo PDF foi enviado." });
+    }
+
+    const dataBuffer = req.file.buffer;
+    const data = await pdf(dataBuffer);
+    
+    // Retorna o texto extraído para o frontend
+    res.json({ text: data.text });
+
+  } catch (error) {
+    console.error("❌ Erro ao processar o PDF:", error);
+    res.status(500).json({ message: "Erro ao ler o arquivo PDF." });
+  }
+});
+        
+
 // --- ROTA DO GEMINI ---
 app.post('/chat', async (req, res) => {
   try {
-    const { message, stockData, persona } = req.body;
+    const { message, stockData, persona, pdfText,  } = req.body;
     if (!stockData || !stockData.ticker) {
       return res.status(400).json({ message: "Dados da ação (stockData) estão faltando no pedido." });
     }
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig:{ temperature: 0.2}});
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash", generationConfig:{ temperature: 0.3}});
 
 
     const formatCurrency = (val) => val ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact' }).format(val) : 'N/A';
@@ -39,10 +66,22 @@ app.post('/chat', async (req, res) => {
     const formatPercent = (val) => val ? `${(val * 100).toFixed(2)}%`.replace('.', ',') : 'N/A';
 
     
-    const getValuationPrompt = (stockData, persona) => {
-  const { ticker, companyName, sector, price, sharesOutstanding, indicators, totalDebt, totalCash } = stockData;
-  const { pl, pvp, dy, fcf } = indicators;
-
+  const getValuationPrompt = (stockData, persona, pdfText) => {
+  const { ticker, companyName, sector, price, sharesOutstanding, indicators, totalDebt, totalCash, fcf, marketCap  } = stockData;
+  const { pl, pvp, dy, } = indicators;
+      const pdfContext = pdfText 
+        ? 
+        `
+          # 📄 DADOS FINANCEIROS DO PDF (Fonte Primária)
+          Você TEM A OBRIGAÇÃO de usar os dados extraídos abaixo como fonte principal para validação e análise de números contábeis, incluindo: Caixa, Dívida, Receita, FCF, Despesas Financeiras, e outros.
+          - Caso haja conflito entre o PDF e a API, dê prioridade ao PDF e JUSTIFIQUE.
+          - Somente use os dados da API se o PDF estiver INCOMPLETO ou INCONSISTENTE.
+          - Mencione o PDF explicitamente na conclusão como base da análise.
+          ---
+          ${pdfText.substring(0, 5000)}... 
+          ---
+          ` 
+              : '';
   // INSTRUÇÃO BASE (COMUM A TODOS)
   let prompt;
 
@@ -58,6 +97,7 @@ app.post('/chat', async (req, res) => {
   - Setor: ${sector}
   - Preço Atual: ${price}
   - P/L: ${pl || 'N/A'}, P/VP: ${pvp || 'N/A'}, Dividend Yield (DY): ${dy || 'N/A'}
+  ${pdfContext}
 
   # Regras & Metodologia DDM (Execução Obrigatória)
 
@@ -91,46 +131,71 @@ app.post('/chat', async (req, res) => {
       default: wacc = 0.135; fcfGrowthRate = 0.03; break; // Médio
     }
 
-    prompt = `# Persona e Objetivo
-  Você é um "Analista de Valuation Sênior" para um investidor de perfil "${persona}". Seu objetivo é calcular o valor justo da ação ${ticker} usando o Fluxo de Caixa Descontado (FCD) e apresentar uma conclusão prática.
+    prompt = `
+    
+    # Persona e Objetivo
+      Você é um "Analista de Valuation Sênior" para um investidor de perfil "${persona}". Seu objetivo é calcular o valor justo da ação ${ticker} usando o Fluxo de Caixa Descontado (FCD). Siga TODAS as etapas OBRIGATORIAMENTE.
 
-  # Contexto (Dados Fornecidos)
-  - Ticker: ${ticker}, Nome: ${companyName}
-  - Setor: ${sector || 'Geral'}
-  - Preço Atual: ${price}
-  - Ações em Circulação: ${sharesOutstanding}
-  - Fluxo de Caixa Livre (TTM): ${fcf || 'N/A'}
-  - Dívida Total: ${totalDebt || 'N/A'}, Caixa e Equivalentes: ${totalCash || 'N/A'}
-  - P/L: ${pl || 'N/A'}, P/VP: ${pvp || 'N/A'}, DY: ${dy || 'N/A'}
+      # Dados de Mercado (API)
+      - Ticker: ${ticker}, Nome: ${companyName}
+      - Preço Atual: ${price}
+      - Market Cap (E): ${marketCap}
+      - Ações em Circulação: ${sharesOutstanding}
+      - Fluxo de Caixa Livre (TTM) / FCF: ${fcf}
+      - Dívida Total (D): ${totalDebt}
+      - Caixa e Equivalentes: ${totalCash}
+      - P/L: ${pl || 'N/A'}, P/VP: ${pvp || 'N/A'}, DY: ${dy || 'N/A'}
+      ${pdfContext}
 
-  # Regras & Metodologia FCD (Execução Obrigatória)
+      # Metodologia FCD - Execução Passo a Passo Obrigatória
 
-  1.  **Análise Preliminar:** Com base nos dados, faça uma breve análise da situação atual da empresa (alavancagem, múltiplos, etc.).
+      ## ETAPA 1: Análise Preliminar e Validação de Dados
+      1.  Comece sua resposta com um resumo dos dados de mercado (API).
+      2.  **Validação Cruzada com PDF:** Compare os dados da API com os dados do PDF. Se houver divergências (ex: Dívida Total), aponte-as e justifique qual fonte você usará para os cálculos (geralmente, os dados consolidados são preferíveis).
 
-  2.  **Projeções de FCF (5 Anos):**
-      * **FCF Base (Ano 1):** Use o "Fluxo de Caixa Livre (TTM)" fornecido como a base para o FCF do Ano 1. Se não for informado, estime-o de forma conservadora.
-      * **Taxa de Crescimento:** Crie uma tabela de projeção para 5 anos, começando com uma taxa de crescimento de ${(fcfGrowthRate * 100).toFixed(1)}% no Ano 2 e reduzindo-a gradualmente em 1% a cada ano subsequente.
+      ## ETAPA 2: Projeções de Fluxo de Caixa Livre (FCF)
+      1.  **FCF Base (Ano 1):** Use o "Fluxo de Caixa Livre (TTM)" REAL fornecido pela API. NÃO ESTIME este número. Se o valor for nulo, e somente nesse caso, calcule-o a partir do PDF (Fluxo de Caixa Operacional - CAPEX) e justifique.
+      2.  **Tabela de Projeção:** Crie uma tabela de projeção de FCF para 5 anos, usando a taxa de crescimento inicial de ${fcfGrowthRate * 100}% e reduzindo-a gradualmente.
 
-  3.  **Premissas de Desconto e Perpetuidade:**
-      * **WACC (OBRIGATÓRIO):** Use um WACC de exatamente **${(wacc * 100).toFixed(1)}%**. Esta é uma premissa fixa para a análise de perfil "${persona}". **NÃO** calcule o WACC.
-      * **Crescimento na Perpetuidade (g):** Use uma taxa 'g' de 2.5%.
+      ## ETAPA 3: Cálculo do WACC (Custo Médio Ponderado de Capital)
+      Esta é a etapa mais crítica. Siga o algoritmo abaixo:
 
-  4.  **Cálculos de Valuation:**
-      * Calcule o Valor Presente dos FCFs projetados usando o WACC fornecido.
-      * Calcule o Valor Terminal e seu Valor Presente.
-      * Some-os para encontrar o Enterprise Value (EV).
-      * Subtraia a Dívida Líquida (Dívida Total - Caixa) do EV para encontrar o Equity Value.
-      * Divida o Equity Value pelo número de Ações em Circulação para encontrar o Preço Justo. Mostre os cálculos de forma clara.
+      1.  **Custo do Capital Próprio (Ke):**
+          * Calcule o Ke usando o modelo CAPM: "Ke = Rf + Beta * (Rm - Rf)".
+          * Use as seguintes premissas: Taxa Livre de Risco (Rf) = 10.5%; Prêmio de Risco de Mercado ("Rm - Rf") = 7.5%.
+          * Assuma um Beta (β) de 1.0, a menos que o setor seja notoriamente de baixo risco (ex: Utilities), onde um Beta de 0.8 pode ser usado. Justifique sua escolha.
+          * Apresente o cálculo final do Ke.
 
-  5.  **Resultado Final e Conclusão Prática:**
-      * Apresente a tabela resumo (Preço Justo, Preço Atual, Potencial de Valorização/Desvalorização).
-      * Escreva uma conclusão objetiva para o investidor, indicando se, com base neste modelo, a ação parece estar sendo negociada com um prêmio ou desconto em relação ao seu valor intrínseco. Finalize com o disclaimer padrão.`;
-  }
+      2.  **Custo da Dívida (Kd):**
+          * **Passo 1:** No PDF, localize a "Demonstração do Resultado Consolidado".
+          * **Passo 2:** Encontre a linha "Despesas Financeiras" ou "Resultado Financeiro" e extraia o valor acumulado no período.
+          * **Passo 3:** Calcule o Custo da Dívida antes dos impostos com a fórmula: "Kd = Despesas Financeiras / Dívida Total". Use a "Dívida Total" fornecida pela API.
+          * **Passo 4:** Calcule o Custo da Dívida após os impostos: "Kd_liquido = Kd * (1 - Taxa de Imposto)". Assuma uma Taxa de Imposto (IR/CSLL) de 34%, a menos que consiga calcular uma taxa efetiva a partir da DRE no PDF.
+          * Apresente os valores encontrados e o cálculo.
+
+      3.  **Cálculo Final do WACC:**
+          * Use a fórmula padrão: "WACC = (E / (E + D)) * Ke + (D / (E + D)) * Kd_liquido".
+          * Onde: "E" = Market Cap (API), "D" = Dívida Total (API).
+          * Apresente o cálculo e o WACC final.
+
+      4.  **Plano B (Somente se estritamente necessário):** Se o PDF não contiver de forma alguma uma DRE que permita identificar as "Despesas Financeiras", Você deve dizer na análise que o valor do WACC foi presumido por ausência de dados contábeis completos no PDF, e que isso afeta a precisão da avaliação..
+
+      ## ETAPA 4: Cálculo do Valor Justo
+      1.  Desconte os FCFs projetados usando o WACC que você calculou na Etapa 3.
+      2.  Calcule o Valor Terminal e traga-o a valor presente.
+      3.  Some tudo para encontrar o Enterprise Value (EV).
+      4.  Subtraia a Dívida Líquida (Dívida Total - Caixa) para encontrar o Equity Value.
+      5.  Divida pela quantidade de Ações em Circulação para chegar ao **Preço Justo por Ação**.
+
+      ## ETAPA 5: Conclusão e Tabela Resumo
+      1.  Apresente a tabela final comparando "Preço Justo" e "Preço Atual".
+      2.  Escreva uma conclusão para o investidor "Realista", explicando o que o resultado significa e citando os dados do PDF que influenciaram sua análise qualitativa sobre os riscos e a qualidade da empresa.
+      3.  Finalize com o disclaimer padrão.`;}
   return prompt;
 }; 
-    const prompt = getValuationPrompt(stockData, persona);
+    const prompt = getValuationPrompt(stockData, persona, pdfText);
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const text = await result.response.text();
     res.json({ message: text });
 
   } catch (error) {
