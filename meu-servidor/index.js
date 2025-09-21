@@ -27,7 +27,7 @@ const formatLargeNumber = (num) => {
 // --- ROTA DO GEMINI ---
 app.post('/chat', async (req, res) => {
   try {
-    const { message, stockData } = req.body;
+    const { message, stockData, persona } = req.body;
     if (!stockData || !stockData.ticker) {
       return res.status(400).json({ message: "Dados da ação (stockData) estão faltando no pedido." });
     }
@@ -39,42 +39,96 @@ app.post('/chat', async (req, res) => {
     const formatPercent = (val) => val ? `${(val * 100).toFixed(2)}%`.replace('.', ',') : 'N/A';
 
     
-    const prompt = `
-    # INSTRUÇÃO MESTRA
-    Você é um "Analista de Valuation Sênior", especialista em modelagem financeira. Sua tarefa é realizar uma análise de Fluxo de Caixa Descontado (FCD) para o ticker informado, seguindo a metodologia mais precisa.
+    const getValuationPrompt = (stockData, persona) => {
+  const { ticker, companyName, sector, price, sharesOutstanding, indicators, totalDebt, totalCash } = stockData;
+  const { pl, pvp, dy, fcf } = indicators;
 
-    # DADOS REAIS DA AÇÃO (Ponto de Partida)
-    - Ticker: ${stockData.ticker}
-    - Nome: ${stockData.companyName}
-    - Preço Atual: ${stockData.price}
-    - Ações em Circulação: ${stockData.sharesOutstanding}
-    - Fluxo de Caixa Livre (Últimos 12M): ${stockData.indicators.fcf || 'Não Informado'}
-    - Dívida Total: ${stockData.totalDebt || 'Não Informado'}
-    - Caixa e Equivalentes: ${stockData.totalCash || 'Não Informado'}
-    - P/L: ${stockData.indicators.pl || 'Não Informado'}
-    - P/VP: ${stockData.indicators.pvp || 'Não Informado'}
-    - Dividend Yield: ${stockData.indicators.dy || 'Não Informado'}
+  // INSTRUÇÃO BASE (COMUM A TODOS)
+  let prompt;
 
-    # ETAPAS DE EXECUÇÃO OBRIGATÓRIAS
+  if (sector && sector.toLowerCase().includes('financial')) {
+    // =================================================================
+    // PROMPT PARA O SETOR FINANCEIRO (DDM)
+    // =================================================================
+    prompt = `# Persona e Objetivo
+  Você é um "Analista de Valuation Sênior" para um investidor de perfil "${persona}". Seu objetivo é calcular o valor justo da ação ${ticker} usando o Modelo de Dividendos Descontados (DDM), apropriado para o setor financeiro, e apresentar uma conclusão prática.
 
-    1.  **Análise Preliminar e Contexto de Mercado:** Descreva o sentimento de mercado para o setor e, em seguida, analise a situação financeira da empresa com base nos dados fornecidos.
+  # Contexto (Dados Fornecidos)
+  - Ticker: ${ticker}, Nome: ${companyName}
+  - Setor: ${sector}
+  - Preço Atual: ${price}
+  - P/L: ${pl || 'N/A'}, P/VP: ${pvp || 'N/A'}, Dividend Yield (DY): ${dy || 'N/A'}
 
-    2.  **Modelo de FCD - Projeções:** Crie uma tabela de projeção do FCF para os próximos 5 anos. Use o "Fluxo de Caixa Livre (Últimos 12M)" como ponto de partida. Justifique suas taxas de crescimento.
+  # Regras & Metodologia DDM (Execução Obrigatória)
 
-    3.  **Modelo de FCD - Premissas Finais:** Apresente e justifique o WACC e a Taxa de Crescimento na Perpetuidade (g).
+  1.  **Análise de Qualidade:** Com base nos dados, faça uma breve análise da situação atual da empresa. O P/L está alto ou baixo para o setor? O DY é sustentável?
 
-    4.  **Cálculo do Enterprise Value (EV):** Calcule o Valor Presente dos FCFs projetados e o Valor Presente do Valor Terminal. A soma de ambos resulta no **Enterprise Value**. Mostre os cálculos.
+  2.  **Definição das Premissas (Justificadas):**
+      * **Custo do Equity (Ke) - Modelo CAPM:** Calcule o Ke. Use uma Taxa Livre de Risco (Rf) de 10.5% e um Prêmio de Risco de Mercado (MRP) de 7.5%. Assuma um Beta de 1.0 para bancos grandes ou 1.2 para bancos menores/digitais. Mostre o cálculo: Ke = Rf + Beta * MRP.
+      * **Taxa de Crescimento dos Dividendos (g):** Defina uma taxa de crescimento perpétuo 'g' com base na persona:
+          * **Conservadora:** g = 2.0% (crescimento modesto, abaixo da inflação).
+          * **Realista:** g = 3.0% (alinhado com o crescimento nominal do PIB de longo prazo).
+          * **Otimista:** g = 4.0% (assume ganhos de eficiência e market share).
 
-    5.  **Cálculo do Equity Value (Valor de Mercado):**
-        * **Calcule a Dívida Líquida:** Dívida Líquida = Dívida Total - Caixa e Equivalentes.
-        * **Calcule o Equity Value:** Equity Value = Enterprise Value - Dívida Líquida.
-        * **Calcule o Preço Justo por Ação:** Preço Justo = Equity Value / Ações em Circulação.
+  3.  **Cálculo do Valor Justo:**
+      * Calcule o Dividendo por Ação do último ano (D0) usando: D0 = Preço Atual * DY.
+      * Calcule o Dividendo esperado para o próximo ano (D1) usando: D1 = D0 * (1 + g).
+      * Calcule o Preço Justo usando a fórmula de Gordon: Preço Justo = D1 / (Ke - g). Mostre todos os cálculos de forma clara.
 
-    6.  **Tabela Resumo:** Apresente a tabela final (Preço Justo, Preço Atual, Potencial de Valorização).
+  4.  **Resultado Final e Conclusão Prática:**
+      * Apresente a tabela resumo (Preço Justo, Preço Atual, Potencial de Valorização/Desvalorização).
+      * Escreva uma conclusão objetiva para o investidor, indicando se, com base neste modelo, a ação parece estar sendo negociada com um prêmio ou desconto em relação ao seu valor intrínseco. Finalize com o disclaimer padrão.`;
 
-    7.  **Conclusão e Disclaimer:** Apresente sua conclusão e o disclaimer padrão.
-      `;
+  } else {
+    // =================================================================
+    // PROMPT PARA OUTROS SETORES (FCD)
+    // =================================================================
+    let wacc;
+    let fcfGrowthRate;
+    switch (persona) {
+      case 'Otimista': wacc = 0.12; fcfGrowthRate = 0.05; break; // WACC menor, crescimento maior
+      case 'Conservadora': wacc = 0.15; fcfGrowthRate = 0.01; break; // WACC maior, crescimento menor
+      default: wacc = 0.135; fcfGrowthRate = 0.03; break; // Médio
+    }
 
+    prompt = `# Persona e Objetivo
+  Você é um "Analista de Valuation Sênior" para um investidor de perfil "${persona}". Seu objetivo é calcular o valor justo da ação ${ticker} usando o Fluxo de Caixa Descontado (FCD) e apresentar uma conclusão prática.
+
+  # Contexto (Dados Fornecidos)
+  - Ticker: ${ticker}, Nome: ${companyName}
+  - Setor: ${sector || 'Geral'}
+  - Preço Atual: ${price}
+  - Ações em Circulação: ${sharesOutstanding}
+  - Fluxo de Caixa Livre (TTM): ${fcf || 'N/A'}
+  - Dívida Total: ${totalDebt || 'N/A'}, Caixa e Equivalentes: ${totalCash || 'N/A'}
+  - P/L: ${pl || 'N/A'}, P/VP: ${pvp || 'N/A'}, DY: ${dy || 'N/A'}
+
+  # Regras & Metodologia FCD (Execução Obrigatória)
+
+  1.  **Análise Preliminar:** Com base nos dados, faça uma breve análise da situação atual da empresa (alavancagem, múltiplos, etc.).
+
+  2.  **Projeções de FCF (5 Anos):**
+      * **FCF Base (Ano 1):** Use o "Fluxo de Caixa Livre (TTM)" fornecido como a base para o FCF do Ano 1. Se não for informado, estime-o de forma conservadora.
+      * **Taxa de Crescimento:** Crie uma tabela de projeção para 5 anos, começando com uma taxa de crescimento de ${(fcfGrowthRate * 100).toFixed(1)}% no Ano 2 e reduzindo-a gradualmente em 1% a cada ano subsequente.
+
+  3.  **Premissas de Desconto e Perpetuidade:**
+      * **WACC (OBRIGATÓRIO):** Use um WACC de exatamente **${(wacc * 100).toFixed(1)}%**. Esta é uma premissa fixa para a análise de perfil "${persona}". **NÃO** calcule o WACC.
+      * **Crescimento na Perpetuidade (g):** Use uma taxa 'g' de 2.5%.
+
+  4.  **Cálculos de Valuation:**
+      * Calcule o Valor Presente dos FCFs projetados usando o WACC fornecido.
+      * Calcule o Valor Terminal e seu Valor Presente.
+      * Some-os para encontrar o Enterprise Value (EV).
+      * Subtraia a Dívida Líquida (Dívida Total - Caixa) do EV para encontrar o Equity Value.
+      * Divida o Equity Value pelo número de Ações em Circulação para encontrar o Preço Justo. Mostre os cálculos de forma clara.
+
+  5.  **Resultado Final e Conclusão Prática:**
+      * Apresente a tabela resumo (Preço Justo, Preço Atual, Potencial de Valorização/Desvalorização).
+      * Escreva uma conclusão objetiva para o investidor, indicando se, com base neste modelo, a ação parece estar sendo negociada com um prêmio ou desconto em relação ao seu valor intrínseco. Finalize com o disclaimer padrão.`;
+  }
+  return prompt;
+}; 
+    const prompt = getValuationPrompt(stockData, persona);
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     res.json({ message: text });
@@ -87,11 +141,12 @@ app.post('/chat', async (req, res) => {
 
 app.get('/api/stock/:ticker', async (req, res) => {
   try {
+    
     const { ticker } = req.params;
     const t = ticker.toUpperCase() + ".SA";
 
     // Módulos que vamos solicitar
-    const modules = ["price", "summaryDetail", "defaultKeyStatistics", "financialData"];
+    const modules = ["price", "summaryDetail", "defaultKeyStatistics", "financialData", "assetProfile"];
     const quoteSummary = await yahooFinance.quoteSummary(t, { modules });
 
     // Adicionamos um log para ver a resposta crua da API no terminal do servidor
@@ -111,6 +166,7 @@ app.get('/api/stock/:ticker', async (req, res) => {
     const data = {
       ticker: ticker.toUpperCase(),
       companyName: quoteSummary.price?.longName || quoteSummary.price?.shortName || ticker,
+      sector: quoteSummary.assetProfile?.sector || null,
       price: quoteSummary.price?.regularMarketPrice ?? null,
       variation: quoteSummary.price?.regularMarketChangePercent ?? null,
       marketCap: quoteSummary.price?.marketCap ?? null,

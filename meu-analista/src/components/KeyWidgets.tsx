@@ -1,10 +1,10 @@
 import React from 'react';
 import { ScaleIcon, ShieldCheckIcon, BeakerIcon } from '@heroicons/react/24/outline';
 import Header from './Header';
+import AnimatedSection from './AnimatedSection';
 
 
-
-const widgets = [
+const concept = [
   {
     icon: ScaleIcon,
     title: 'O que é Preço Justo?',
@@ -24,22 +24,37 @@ const widgets = [
  
 export default function KeyWidgets() {
   return (
-    <section className='mb-20'>
-      <div className='grid grid-cols-1 md:grid-cols-2 gap-8 hover:transforme hover:translate-y-1'>
-        {widgets.map((widget) => {
-          const IconComponent = widget.icon;
-          return (
-            <div key={widget.title} className='bg-white/5 p-6 rounded-lg border border-white/10'>
-              <div className='flex items-center gap-4 mb-4'>
-                <IconComponent className='h-8 w-8 text-primary'/>
-                <h3 className='text-xl font-bold'>{widget.title}</h3>
+<section className='space-y-16'>
+      {concept.map((concept, index) => {
+        const IconComponent = concept.icon;
+        return (
+            <AnimatedSection key={concept.title}>
+          <div
+            key={concept.title}
+            className="bg-slate-900/50 border border-white/10 rounded-lg p-8 transform transition-transform hover:-translate-y-2"
+          >
+           
+            <div 
+              className={`
+                flex flex-col md:flex-row items-center gap-8 md:gap-12
+                ${index % 2 !== 0 ? 'md:flex-row-reverse' : ''}
+              `}
+            >
+  
+              <div className="md:w-1/4 flex justify-center">
+                <IconComponent className='h-16 w-16 text-green-400 text-primary'/>
               </div>
-                <p className='text-text-secondary'>{widget.description}</p>
+
+
+              <div className="md:w-3/4 text-center md:text-left">
+                <h3 className='text-2xl font-bold mb-3'>{concept.title}</h3>
+                <p className='text-text-secondary leading-relaxed'>{concept.description}</p>
+              </div>
             </div>
-          );
-        })}
-              </div>
-      
-    </section>   
+          </div>
+          </AnimatedSection>
+        );
+      })}
+    </section>
   );
 }
