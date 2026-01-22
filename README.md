@@ -1,7 +1,5 @@
 # 🤖 Analista de Valuation com IA (Gemini)
 
-# 🤖 Analista de Valuation com IA (Gemini)
-
 ![Prévia do Projeto](https://i.imgur.com/vH4kY4p.png)
 
 ## 📜 Descrição
