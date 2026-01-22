@@ -1,68 +1,69 @@
 # 🤖 Analista de Valuation com IA (Gemini)
 
-![Prévia do Projeto](https://i.imgur.com/vH4kY4p.png) ## 📜 Descrição
+# 🤖 Analista de Valuation com IA (Gemini)
 
-O Analista de Valuation é uma aplicação web full-stack que utiliza a inteligência artificial do Google Gemini para realizar análises fundamentalistas de ações da bolsa brasileira (B3). O usuário pode inserir o ticker de uma ação e receber, em uma interface de chat, uma análise estruturada baseada no modelo de Fluxo de Caixa Descontado (FCD), enquanto um painel de dados exibe informações de mercado em tempo real.
+![Prévia do Projeto](https://i.imgur.com/vH4kY4p.png)
 
-Este projeto foi construído do zero para demonstrar um conjunto completo de habilidades de desenvolvimento, desde a criação da interface e experiência do usuário até a implementação de um backend seguro que consome múltiplas APIs de terceiros.
+## 📜 Descrição
 
-## ✨ Funcionalidades Principais
+O Analista de Valuation é uma aplicação web full-stack que utiliza a inteligência artificial do Google Gemini para realizar análises fundamentalistas de ações da bolsa brasileira (B3). O objetivo foi criar uma aplicação capaz de não apenas mostrar dados, mas "raciocinar" sobre eles, aplicando metodologias como Fluxo de Caixa Descontado (FCD) de forma automatizada.
 
-* **Chat com IA:** Interface de chat interativa para solicitar análises de ações.
-* **Prompt Engineering Avançado:** Um prompt detalhado no backend força o Gemini a atuar como um especialista e a formatar as respostas em tabelas e seções.
-* **Painel de Dados Dinâmico:** Um painel lateral que busca e exibe dados de mercado em tempo real (preço, variação, indicadores) da ação analisada.
-* **Backend Seguro:** Um servidor Node.js/Express que protege as chaves de API e gerencia a lógica de negócios.
-* **Design Responsivo:** A interface é totalmente adaptável para desktops, tablets e celulares, utilizando uma estratégia "Mobile-First".
-* **Modo de Desenvolvimento:** O backend inclui um "interruptor" para usar dados mockados, permitindo o desenvolvimento do frontend sem esgotar as cotas das APIs.
+Este projeto foi construído para consolidar conhecimentos em integração de LLMs com sistemas tradicionais (React + Node.js).
+
+## ⚠️ Status do Projeto e Limitações Conhecidas
+
+**Este projeto foi finalizado como um MVP (Minimum Viable Product) para fins de estudo e portfólio. O código está disponível "as-is" (como está).**
+
+Se você clonar este repositório, esteja ciente das seguintes limitações arquiteturais:
+
+1.  **Limites da API do Gemini:** O projeto utiliza a camada gratuita da API do Google Gemini. É comum enfrentar erros de *Rate Limit* (Erro 429) ou instabilidade na resposta se houver muitas requisições consecutivas.
+2.  **Premissas do Valuation:** A IA *estima* as taxas de crescimento e desconto (WACC) baseada nos indicadores básicos (P/L, P/VP, DY). O sistema **não** consome balanços patrimoniais completos, o que pode gerar distorções no cálculo do Preço Justo.
+3.  **Escopo de Mercado:** O sistema está otimizado para tickers da B3 (sufixo `.SA`).
+4.  **Persistência:** Não há banco de dados conectado. O histórico do chat é perdido ao recarregar a página.
+
+## ✨ Funcionalidades
+
+* **Chat com IA:** Interface interativa para solicitar análises de ações.
+* **RAG Simplificado:** O backend injeta dados financeiros reais no prompt do modelo para evitar alucinações.
+* **Painel de Dados:** Exibição de preço e indicadores em tempo real.
+* **Design Responsivo:** Interface "Mobile-First" com Tailwind CSS.
 
 ## 🚀 Tecnologias Utilizadas
 
 #### **Frontend**
-* **React** com **TypeScript**
-* **Vite** como ambiente de desenvolvimento
-* **Tailwind CSS** para estilização
-* **Heroicons** para a iconografia
+* **React** com **TypeScript** e **Vite**
+* **Tailwind CSS**
 
 #### **Backend**
 * **Node.js** com **Express**
-* **Axios** para chamadas a APIs externas
-* **dotenv** para gerenciamento de variáveis de ambiente
+* **Yahoo Finance API** (via biblioteca `yahoo-finance2`) para dados de mercado.
+* **Google Gemini API** (modelo `gemini-1.5-flash`) para raciocínio analítico.
 
-#### **APIs**
-* **Google Gemini API (gemini-1.5-pro)** para a análise de IA.
-* **Alpha Vantage API** para os dados financeiros e de mercado.
+## ⚙️ Como Rodar Localmente
 
-## ⚙️ Como Rodar o Projeto Localmente
-
-**Pré-requisitos:** Node.js (v18+)
+**Pré-requisitos:** Node.js (v18+) e uma chave de API do Google Gemini.
 
 1.  **Clone o repositório:**
     ```bash
-    git clone [https://github.com/seu-usuario/seu-repositorio.git](https://github.com/seu-usuario/seu-repositorio.git)
+    git clone [https://github.com/seu-usuario/analista-valuation.git](https://github.com/seu-usuario/analista-valuation.git)
     ```
 
-2.  **Configure o Backend (`meu-servidor`):**
+2.  **Backend:**
     ```bash
     cd meu-servidor
     npm install
+    # Crie um arquivo .env com:
+    # GEMINI_API_KEY="SUA_CHAVE"
+    node index.js
     ```
-    * Crie um arquivo `.env` na raiz de `/meu-servidor` e adicione suas chaves de API:
-        ```
-        GEMINI_API_KEY="SUA_CHAVE_GEMINI"
-        ALPHA_VANTAGE_API_KEY="SUA_CHAVE_ALPHA_VANTAGE"
-        ```
-    * Inicie o servidor backend:
-        ```bash
-        node index.js
-        ```
 
-3.  **Configure o Frontend (`meu-analista`):**
+3.  **Frontend:**
     ```bash
-    cd ../meu-analista
+    cd meu-analista
     npm install
+    npm run dev
     ```
-    * Inicie a aplicação React:
-        ```bash
-        npm run dev
-        ```
+
+---
+*Desenvolvido como projeto de estudo de arquitetura Full Stack e IA Generativa.*
 
